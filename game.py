@@ -400,7 +400,7 @@ def findMove(bo, n):
                         break
         if add:
             ba.append(combo)
-    #loop thru bo again, look for spot that is clear in every or no combo, if not clear highest percent chance
+    #loop thru gs, look for spot that is clear in every or no combo, if not clear highest percent chance
     hc = ((-1, -1), 0) #save spot with highest clear chance
     for g in gs:
         tt = 1
@@ -544,6 +544,258 @@ def findMoveFast(bo):
     rt = random.choice(gs)
     return numberToCoord(rt[0]) + numberToCoord(rt[1])
 
+def findMoveWell(board, bombs):
+    zeroBoard = [] #copy of board, flags and unknown set to 0
+    blankTiles = []
+    flags = []
+    nums = []
+    pos = 0
+    for r in range(len(board)):
+        zeroBoard.append([])
+        for c in range(len(board)):
+            if board[r][c] == -2:
+                zeroBoard[r].append(0)
+                flags.append((r,c))
+            elif board[r][c] == -1:
+                zeroBoard[r].append(0)
+                blankTiles.append((r, c))
+            else:
+                zeroBoard[r].append(board[r][c])
+                if board[r][c] > 0:
+                    nums.append((r,c))
+                    pos+=1
+                    uk = 0 #unkown tiles, = 0 in aa
+                    bmb = 0 #flags, = -1 in aa
+                    nm = 0 #number tiles, = 1 in aa
+                    aa = [] #array of adjacent tiles, tuples (r, c, type) where type = uk: 0, bmb: -1, nm: 1
+                    #put existing adjacent tiles in aa
+                    if r > 0 and c > 0:
+                        if board[r-1][c-1] == -1:
+                            uk+=1
+                            aa.append((r-1, c-1, 0))
+                        if board[r-1][c-1] == -2:
+                            bmb+=1
+                            aa.append((r-1, c-1, -1))
+                        if board[r-1][c-1] >= 0:
+                            nm+=1
+                            aa.append((r-1, c-1, 1))
+                    if r > 0:
+                        if board[r-1][c] == -1:
+                            uk+=1
+                            aa.append((r-1, c, 0))
+                        if board[r-1][c] == -2:
+                            bmb+=1
+                            aa.append((r-1, c, -1))
+                        if board[r-1][c] >= 0:
+                            nm+=1
+                            aa.append((r-1, c, 1))
+                    if r > 0 and c < len(board[r])-1:
+                        if board[r-1][c+1] == -1:
+                            uk+=1
+                            aa.append((r-1, c+1, 0))
+                        if board[r-1][c+1] == -2:
+                            bmb+=1
+                            aa.append((r-1, c+1, -1))
+                        if board[r-1][c+1] >= 0:
+                            nm+=1
+                            aa.append((r-1, c+1, 1))
+                    if c < len(board[r])-1:
+                        if board[r][c+1] == -1:
+                            uk+=1
+                            aa.append((r, c+1, 0))
+                        if board[r][c+1] == -2:
+                            bmb+=1
+                            aa.append((r, c+1, -1))
+                        if board[r][c+1] >= 0:
+                            nm+=1
+                            aa.append((r, c+1, 1))
+                    if r < len(board)-1 and c < len(board[r])-1:
+                        if board[r+1][c+1] == -1:
+                            uk+=1
+                            aa.append((r+1, c+1, 0))
+                        if board[r+1][c+1] == -2:
+                            bmb+=1
+                            aa.append((r+1, c+1, -1))
+                        if board[r+1][c+1] >= 0:
+                            nm+=1
+                            aa.append((r+1, c+1, 1))
+                    if r < len(board)-1:
+                        if board[r+1][c] == -1:
+                            uk+=1
+                            aa.append((r+1, c, 0))
+                        if board[r+1][c] == -2:
+                            bmb+=1
+                            aa.append((r+1, c, -1))
+                        if board[r+1][c] >= 0:
+                            nm+=1
+                            aa.append((r+1, c, 1))
+                    if r < len(board)-1 and c > 0:
+                        if board[r+1][c-1] == -1:
+                            uk+=1
+                            aa.append((r+1, c-1, 0))
+                        if board[r+1][c-1] == -2:
+                            bmb+=1
+                            aa.append((r+1, c-1, -1))
+                        if board[r+1][c-1] >= 0:
+                            nm+=1
+                            aa.append((r+1, c-1, 1))
+                    if c > 0:
+                        if board[r][c-1] == -1:
+                            uk+=1
+                            aa.append((r, c-1, 0))
+                        if board[r][c-1] == -2:
+                            bmb+=1
+                            aa.append((r, c-1, -1))
+                        if board[r][c-1] >= 0:
+                            nm+=1
+                            aa.append((r, c-1, 1))
+                    #check if any uk, save first uk
+                    ck = False
+                    gt = None
+                    for s in aa:
+                        if s[2] == 0:
+                            gt = s
+                            ck = True
+                            break
+                    if ck:
+                        #check if all bmb found
+                        tb = board[r][c]
+                        cb = 0
+                        for t in aa:
+                            if t[2] == -1:
+                                cb+=1
+                        if cb == tb:
+                            return numberToCoord(gt[0]) + numberToCoord(gt[1])
+                        #check if only bmb remaining
+                        cckk = 0
+                        for u in aa:
+                            if u[2] == 0:
+                                cckk+=1
+                        if tb-cb == cckk:
+                            return numberToCoord(gt[0]) + numberToCoord(gt[1]) + "f"
+    
+    #if not much info, guess random
+    if len(blankTiles) > 8 * (pos**2):
+        randGuess = random.choice(blankTiles)
+        return numberToCoord(randGuess[0]) + numberToCoord(randGuess[1])
+    
+    #subtract 1 from all adj tiles for every flag in zeroBoard
+        #zeroBoard is now only > 0 for unfullfilled numbers
+        #nums now only contains unfullfilled numbers
+    for flag in flags:
+        rr = flag[0]
+        cc = flag[1]
+        maxrr = len(zeroBoard)-1
+        maxcc = len(zeroBoard)-1
+        if rr > 0 and cc > 0:
+            if zeroBoard[rr-1][cc-1] > 0:
+                if zeroBoard[rr-1][cc-1] == 1:
+                    nums.remove((rr-1,cc-1))
+                zeroBoard[rr-1][cc-1]-=1
+        if rr > 0:
+            if zeroBoard[rr-1][cc] > 0:
+                if zeroBoard[rr-1][cc] == 1:
+                    nums.remove((rr-1,cc))
+                zeroBoard[rr-1][cc]-=1
+        if rr > 0 and cc < maxcc:
+            if zeroBoard[rr-1][cc+1] > 0:
+                if zeroBoard[rr-1][cc+1] == 1:
+                    nums.remove((rr-1,cc+1))
+                zeroBoard[rr-1][cc+1]-=1
+        if cc < maxcc:
+            if zeroBoard[rr][cc+1] > 0:
+                if zeroBoard[rr][cc+1] == 1:
+                    nums.remove((rr,cc+1))
+                zeroBoard[rr][cc+1]-=1
+        if rr < maxrr and cc < maxcc:
+            if zeroBoard[rr+1][cc+1] > 0:
+                if zeroBoard[rr+1][cc+1] == 1:
+                    nums.remove((rr+1,cc+1))
+                zeroBoard[rr+1][cc+1]-=1
+        if rr < maxrr:
+            if zeroBoard[rr+1][cc] > 0:
+                if zeroBoard[rr+1][cc] == 1:
+                    nums.remove((rr+1,cc))
+                zeroBoard[rr+1][cc]-=1
+        if rr < maxrr and cc > 0:
+            if zeroBoard[rr+1][cc-1] > 0:
+                if zeroBoard[rr+1][cc-1] == 1:
+                    nums.remove((rr+1,cc-1))
+                zeroBoard[rr+1][cc-1]-=1
+        if cc > 0:
+            if zeroBoard[rr][cc-1] > 0:
+                if zeroBoard[rr][cc-1] == 1:
+                    nums.remove((rr,cc-1))
+                zeroBoard[rr][cc-1]-=1
+
+    validCombos = 0 #number of valid bomb layouts
+    blanks = []
+    for tl in blankTiles:
+        blanks.append([tl[0], tl[1], 0])
+    for combo in itertools.combinations(blankTiles, bombs):
+        valid = True
+        for bomb in combo:
+            r = bomb[0]
+            c = bomb[1]
+            maxr = len(zeroBoard)-1
+            maxc = len(zeroBoard[0])-1
+            if r > 0 and c > 0:
+                zeroBoard[r-1][c-1]-=1
+            if r > 0:
+                zeroBoard[r-1][c]-=1
+            if r > 0 and c < maxc:
+                zeroBoard[r-1][c+1]-=1
+            if c < maxc:
+                zeroBoard[r][c+1]-=1
+            if r < maxr and c < maxc:
+                zeroBoard[r+1][c+1]-=1
+            if r < maxr:
+                zeroBoard[r+1][c]-=1
+            if r < maxr and c > 0:
+                zeroBoard[r+1][c-1]-=1
+            if c > 0:
+                zeroBoard[r][c-1]-=1
+        for tile in nums:
+            if zeroBoard[tile[0]][tile[1]] != 0:
+                valid = False
+                break
+        for b in combo:
+            r = b[0]
+            c = b[1]
+            maxr = len(zeroBoard)-1
+            maxc = len(zeroBoard[0])-1
+            if r > 0 and c > 0:
+                zeroBoard[r-1][c-1]+=1
+            if r > 0:
+                zeroBoard[r-1][c]+=1
+            if r > 0 and c < maxc:
+                zeroBoard[r-1][c+1]+=1
+            if c < maxc:
+                zeroBoard[r][c+1]+=1
+            if r < maxr and c < maxc:
+                zeroBoard[r+1][c+1]+=1
+            if r < maxr:
+                zeroBoard[r+1][c]+=1
+            if r < maxr and c > 0:
+                zeroBoard[r+1][c-1]+=1
+            if c > 0:
+                zeroBoard[r][c-1]+=1
+        if valid:
+            validCombos+=1
+            for bl in blanks:
+                if (bl[0], bl[1]) not in combo:
+                    bl[2]+=1
+
+    rt = [-1, -1, -1]
+    for blank in blanks:
+        if blank[2] == validCombos:
+            return numberToCoord(blank[0]) + numberToCoord(blank[1])
+        if blank[2] == 0:
+            return numberToCoord(blank[0]) + numberToCoord(blank[1]) + "f"
+        if blank[2] > rt[2]:
+            rt = blank
+    return numberToCoord(rt[0]) + numberToCoord(rt[1])
+
 #play game with r rows, c cols, b bombs with input from console
 def playGame(r, c, b):
     g = genGame(r, c, b)
@@ -551,7 +803,9 @@ def playGame(r, c, b):
         g.printVisBoard()
         #u = input("move: ") #human player
         #u = findMove(g.visBoard, g.bombs) #full solver
-        u = findMoveFast(g.visBoard) #fast solver
+        #u = findMoveFast(g.visBoard) #fast solver
+        u = findMoveWell(g.visBoard, g.bombs) #quick solver
+        print(u)
         if len(u) == 2:
             g.updateBoard(u[0], u[1], False)
         elif len(u) == 3:
@@ -571,8 +825,10 @@ def playTest(g):
     while(g.over() == 0):
         g.printVisBoard()
         #u = input("move: ") #human player
-        u = findMove(g.visBoard, g.bombs) #full solver
-        #u = findMoveFast(g.visBoard)
+        #u = findMove(g.visBoard, g.bombs) #full solver
+        #u = findMoveFast(g.visBoard) #fast solver
+        u = findMoveWell(g.visBoard, g.bombs) #quick solver
+        print(u)
         if len(u) == 2:
             g.updateBoard(u[0], u[1], False)
         elif len(u) == 3:
